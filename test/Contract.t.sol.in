@@ -33,7 +33,7 @@ contract ContractTest is Test {
         vm.store(unit, timestamp_idx(), timestamp());
         vm.store(unit, root_idx(), root);
 
-        (bool ret, bytes memory data) = unit.call(bytes.concat(timestamp()));
+        (bool ret, bytes memory data) = unit.call(bytes.concat(bytes4(0x9507d39a),timestamp()));
 
         assertTrue(ret);
         assertEq(data, bytes.concat(root));

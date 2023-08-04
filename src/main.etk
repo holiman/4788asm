@@ -41,8 +41,8 @@
 
 # get_input loads the first word of input from calldata.
 %macro get_input()
-        %push0()        # [0]
-        calldataload    # [calldata[0..32]]
+        push1 4         # [4]
+        calldataload    # [calldata[4..36]]
 %end
 
 # get_timestamp_index calculates the index a timestamp should be stored at.
@@ -52,11 +52,15 @@
         mod             # [timestamp % rootmod]
 %end
 
-%macro revert()
-        %push0()        # [0]
-        %push0()        # [0, 0]
-        revert          # []
-%end
+# revert_if_neq reverts if the top two stack arguments are not equal
+# stack: [a, b] (assumed precondition)
+%macro revert_if_neq()
+	eq              # [a == b]
+	iszero          # [a != b]
+	push1 fn_revert # [revert, a != b]
+	jumpi           # []
+%end 
+
 
 # -----------------------------------------------------------------------------
 # MACROS END ------------------------------------------------------------------
@@ -77,14 +81,18 @@ jumpi             # []
 # -----------------------------------------------------------------------------
 
 # Check if calldata is equal to 32 bytes.
-push1 32        # [32]
+push1 36        # [36]
 calldatasize    # [calldatasize, 32]
-eq              # [calldatasize == 32]
+%revert_if_neq()
 
-# Jump to continue if length-check passed, otherwise revert.
-push1 load      # [load_addr, calldatasize == 32]
-jumpi           # []
-%revert()       # []
+# Check if 4byte-signature is correct
+push1 0          # [0]
+calldataload     # [calldataload]
+push1 224        # [224, calldataload]
+shr              # [calldataload >> 224]
+push4 0x9507d39a # [signature, calldataload >> 224]
+%revert_if_neq()
+
 
 # Load stored timestamp.
 load: 
@@ -115,6 +123,12 @@ jumpdest        # []
 push1 32        # [size]
 %push0()        # [offset, size]
 return          # []
+
+fn_revert:
+	%push0()        # [0]
+	%push0()        # [0, 0]
+	revert          # []
+
 
 # -----------------------------------------------------------------------------
 # READ ROOT END ---------------------------------------------------------------
